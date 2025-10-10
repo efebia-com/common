@@ -2,6 +2,29 @@
 
 Shared configuration files and utilities for server provisioning and setup.
 
+## OVH Post-Installation Script
+
+Complete automated setup script for OVH bare metal servers.
+
+### Usage in OVH
+
+In the OVH "Post-Installation Script" field, paste:
+
+```bash
+#!/bin/bash
+curl -fsSL https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh | bash
+```
+
+### What It Installs
+
+- Docker CE with Compose and Buildx plugins
+- NVM and Node.js v24
+- Cloudflared
+- Ghostty terminal support
+- Creates users: devops, runner, gh-actions
+- Configures SSH with key-only authentication
+- Sets up /opt/apps directory structure
+
 ## Ghostty Terminfo
 
 Terminfo database entry for [Ghostty terminal emulator](https://ghostty.org/) to enable full terminal capabilities on remote servers.
