@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e  # Exit on error
-exec > /var/log/post-install.log 2>&1  # Log everything
+
+# Log to /var/log if root, otherwise to home directory
+if [ "$EUID" -eq 0 ]; then
+    exec > /var/log/post-install.log 2>&1
+else
+    exec > ~/post-install.log 2>&1
+fi
 
 echo "=== Starting post-installation setup ==="
 
