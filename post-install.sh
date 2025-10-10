@@ -46,16 +46,16 @@ systemctl start docker
 
 # Create application directory and group
 mkdir -p /opt/apps
-groupadd apps
+groupadd apps 2>/dev/null || true
 
-# Create users
-adduser --system --group --home /opt/apps runner
+# Create users (skip if already exist)
+id -u runner &>/dev/null || adduser --system --group --home /opt/apps runner
 usermod -aG apps runner
 
-adduser --disabled-password --gecos "" --shell /bin/bash devops
+id -u devops &>/dev/null || adduser --disabled-password --gecos "" --shell /bin/bash devops
 usermod -aG apps,docker devops
 
-adduser --system --shell /bin/bash --home /opt/apps gh-actions
+id -u gh-actions &>/dev/null || adduser --system --shell /bin/bash --home /opt/apps gh-actions
 usermod -aG apps,docker gh-actions
 
 # Set permissions on /opt/apps
@@ -70,10 +70,9 @@ touch /home/devops/.ssh/authorized_keys
 chmod 600 /home/devops/.ssh/authorized_keys
 chown -R devops:devops /home/devops/.ssh
 
-# Add your SSH public key here
-cat >> /home/devops/.ssh/authorized_keys << 'EOF'
-ssh-ed25519 AAAA3NzaC1lZDI1NTE5AAAAICKlUsqkYIlxWMG35LsKNkwRK5mogpnyWAPaRatqvSmZ calogero@efebia.com
-EOF
+# Add your SSH public key here (only if not already present)
+SSH_KEY="ssh-ed25519 AAAA3NzaC1lZDI1NTE5AAAAICKlUsqkYIlxWMG35LsKNkwRK5mogpnyWAPaRatqvSmZ calogero@efebia.com"
+grep -qF "$SSH_KEY" /home/devops/.ssh/authorized_keys || echo "$SSH_KEY" >> /home/devops/.ssh/authorized_keys
 
 # Configure SSH daemon
 grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config && \
