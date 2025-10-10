@@ -29,17 +29,12 @@ curl -fsSL https://raw.githubusercontent.com/efebia-com/common/master/post-insta
 
 Terminfo database entry for [Ghostty terminal emulator](https://ghostty.org/) to enable full terminal capabilities on remote servers.
 
-### Quick Install
+### Standalone Installation
+
+If you only need the terminfo (not the full server setup):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/common/main/install.sh | bash
-```
-
-Or manually:
-
-```bash
-wget https://raw.githubusercontent.com/YOUR_USERNAME/common/main/xterm-ghostty.terminfo
-tic -x xterm-ghostty.terminfo
+curl -fsSL https://raw.githubusercontent.com/efebia-com/common/master/xterm-ghostty.terminfo | tic -x -
 ```
 
 ### What This Fixes
@@ -52,11 +47,6 @@ This terminfo file enables:
 - Full color support (256 colors)
 - Proper terminal capabilities
 - htop, vim, tmux, and other ncurses applications work correctly
-
-### Files
-
-- `xterm-ghostty.terminfo` - Terminfo database entry for Ghostty
-- `install.sh` - Automated installation script
 
 ### About
 
