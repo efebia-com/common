@@ -1,0 +1,25 @@
+# Git files
+.git
+.gitignore
+
+# Test artifacts
+test/*.log
+test/tmp/
+
+# Editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/

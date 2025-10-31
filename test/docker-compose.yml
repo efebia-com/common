@@ -1,0 +1,53 @@
+services:
+  # Test backend server provisioning
+  backend:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile
+    container_name: test-backend
+    hostname: backend-test
+    volumes:
+      # Mount the entire repo for testing local changes
+      - ..:/provisioning:ro
+    environment:
+      - PROFILE=backend
+      - SKIP_DOCKER=1  # Skip Docker installation in tests
+    networks:
+      - provision-test
+    restart: "no"
+
+  # Test database server provisioning
+  database:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile
+    container_name: test-database
+    hostname: database-test
+    volumes:
+      - ..:/provisioning:ro
+    environment:
+      - PROFILE=database
+      - SKIP_DOCKER=1
+    networks:
+      - provision-test
+    restart: "no"
+
+  # Test general purpose server provisioning
+  general:
+    build:
+      context: ..
+      dockerfile: test/Dockerfile
+    container_name: test-general
+    hostname: general-test
+    volumes:
+      - ..:/provisioning:ro
+    environment:
+      - PROFILE=general
+      - SKIP_DOCKER=1
+    networks:
+      - provision-test
+    restart: "no"
+
+networks:
+  provision-test:
+    driver: bridge
