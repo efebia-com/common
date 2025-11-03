@@ -57,12 +57,15 @@ setup_ssh() {
 
     # Restart SSH service to apply changes
     log_info "Restarting SSH service"
-    if ! run_safe "Restart SSH service" sudo systemctl restart sshd; then
+    # Try both sshd and ssh service names (varies by distro)
+    if sudo systemctl restart sshd 2>/dev/null || sudo systemctl restart ssh 2>/dev/null; then
+        log_info "SSH service restarted successfully"
+    else
         log_warning "Failed to restart SSH service - changes may not be applied"
     fi
 
-    # Verify SSH service is running
-    if sudo systemctl is-active --quiet sshd; then
+    # Verify SSH service is running (check both possible names)
+    if sudo systemctl is-active --quiet sshd 2>/dev/null || sudo systemctl is-active --quiet ssh 2>/dev/null; then
         log_info "SSH service is active and running"
     else
         component_fail "ssh" "SSH service is not running after restart"
