@@ -4,18 +4,21 @@
 
 set -euo pipefail
 
+# Use dedicated temp directory to avoid conflicts
+TEMP_DIR="/tmp/post-install-$$"
+
 # Cleanup function
 cleanup_temp_files() {
-    rm -f /tmp/base.sh /tmp/*.profile 2>/dev/null
-    rm -f /tmp/system.sh /tmp/terminal.sh /tmp/docker.sh /tmp/users.sh 2>/dev/null
-    rm -f /tmp/cloudflared.sh /tmp/ssh.sh /tmp/database.sh /tmp/nodejs.sh 2>/dev/null
+    if [[ -d "$TEMP_DIR" ]]; then
+        rm -rf "$TEMP_DIR"
+    fi
 }
 
 # Always cleanup on exit (success or failure)
 trap cleanup_temp_files EXIT
 
-# Clean up any stale files from previous runs
-cleanup_temp_files
+# Create fresh temp directory
+mkdir -p "$TEMP_DIR"
 
 # Configuration
 # Detect if running from local directory (for testing) or need to download from GitHub
@@ -80,11 +83,11 @@ if [[ "$USE_LOCAL" == "true" ]]; then
     source "${REPO_BASE_URL}/lib/base.sh"
 else
     echo "Downloading base utilities..."
-    if ! curl -fsSL "${REPO_BASE_URL}/lib/base.sh" -o /tmp/base.sh; then
+    if ! curl -fsSL "${REPO_BASE_URL}/lib/base.sh" -o "$TEMP_DIR/base.sh"; then
         echo "ERROR: Failed to download base utilities" >&2
         exit 1
     fi
-    source /tmp/base.sh
+    source "$TEMP_DIR/base.sh"
 fi
 
 # Set script name for logging
@@ -111,12 +114,12 @@ if [[ "$USE_LOCAL" == "true" ]]; then
     source "${REPO_BASE_URL}/profiles/${PROFILE_NAME}.profile"
 else
     log_info "Downloading profile: ${PROFILE_NAME}"
-    if ! download_file "${REPO_BASE_URL}/profiles/${PROFILE_NAME}.profile" "/tmp/${PROFILE_NAME}.profile"; then
+    if ! download_file "${REPO_BASE_URL}/profiles/${PROFILE_NAME}.profile" "$TEMP_DIR/${PROFILE_NAME}.profile"; then
         log_error "Failed to download profile: ${PROFILE_NAME}"
         log_error "Available profiles: backend, database, general"
         exit 1
     fi
-    source "/tmp/${PROFILE_NAME}.profile"
+    source "$TEMP_DIR/${PROFILE_NAME}.profile"
 fi
 
 log_info "Loaded profile: ${SERVER_TYPE}"
@@ -137,11 +140,11 @@ else
     log_info "Downloading component modules..."
     for component in "${COMPONENTS[@]}"; do
         log_info "Downloading component: ${component}"
-        if ! download_file "${REPO_BASE_URL}/lib/${component}.sh" "/tmp/${component}.sh"; then
+        if ! download_file "${REPO_BASE_URL}/lib/${component}.sh" "$TEMP_DIR/${component}.sh"; then
             log_error "Failed to download component: ${component}"
             exit 1
         fi
-        source "/tmp/${component}.sh"
+        source "$TEMP_DIR/${component}.sh"
     done
 fi
 
