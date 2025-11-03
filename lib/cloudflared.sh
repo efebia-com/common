@@ -16,7 +16,7 @@ setup_cloudflared() {
 
     # Add Cloudflare GPG key
     log_info "Adding Cloudflare GPG key"
-    if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null; then
+    if ! curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null; then
         component_fail "cloudflared" "Failed to add Cloudflare GPG key"
         return 1
     fi
@@ -24,16 +24,16 @@ setup_cloudflared() {
     # Add Cloudflare repository
     log_info "Adding Cloudflare repository"
     echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" | \
-        tee /etc/apt/sources.list.d/cloudflared.list > /dev/null
+        sudo tee /etc/apt/sources.list.d/cloudflared.list > /dev/null
 
     # Update package lists
-    if ! run_safe "Update apt after adding Cloudflare repo" apt-get update; then
+    if ! run_safe "Update apt after adding Cloudflare repo" sudo apt-get update; then
         component_fail "cloudflared" "Failed to update package lists"
         return 1
     fi
 
     # Install cloudflared
-    if ! run_safe "Install cloudflared" apt-get install -y cloudflared; then
+    if ! run_safe "Install cloudflared" sudo apt-get install -y cloudflared; then
         component_fail "cloudflared" "Failed to install cloudflared"
         return 1
     fi

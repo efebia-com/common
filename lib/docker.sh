@@ -23,29 +23,29 @@ setup_docker() {
 
     # Install prerequisites
     local prereqs=(ca-certificates curl gnupg)
-    if ! run_safe "Install Docker prerequisites" apt-get install -y "${prereqs[@]}"; then
+    if ! run_safe "Install Docker prerequisites" sudo apt-get install -y "${prereqs[@]}"; then
         component_fail "docker" "Failed to install prerequisites"
         return 1
     fi
 
     # Add Docker's official GPG key
     log_info "Adding Docker GPG key"
-    install -m 0755 -d /etc/apt/keyrings
-    if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc; then
+    sudo install -m 0755 -d /etc/apt/keyrings
+    if ! sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc; then
         component_fail "docker" "Failed to download Docker GPG key"
         return 1
     fi
-    chmod a+r /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
 
     # Add Docker repository
     log_info "Adding Docker repository"
     echo \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
       $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-      tee /etc/apt/sources.list.d/docker.list > /dev/null
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
     # Update package index
-    if ! run_safe "Update apt after adding Docker repo" apt-get update; then
+    if ! run_safe "Update apt after adding Docker repo" sudo apt-get update; then
         component_fail "docker" "Failed to update package lists"
         return 1
     fi
@@ -60,7 +60,7 @@ setup_docker() {
     )
 
     log_info "Installing Docker packages: ${docker_packages[*]}"
-    if ! run_safe "Install Docker packages" apt-get install -y "${docker_packages[@]}"; then
+    if ! run_safe "Install Docker packages" sudo apt-get install -y "${docker_packages[@]}"; then
         component_fail "docker" "Failed to install Docker packages"
         return 1
     fi
@@ -73,11 +73,11 @@ setup_docker() {
 
     # Enable and start Docker service
     log_info "Enabling Docker service"
-    if ! run_safe "Enable Docker service" systemctl enable docker; then
+    if ! run_safe "Enable Docker service" sudo systemctl enable docker; then
         log_warning "Failed to enable Docker service"
     fi
 
-    if ! run_safe "Start Docker service" systemctl start docker; then
+    if ! run_safe "Start Docker service" sudo systemctl start docker; then
         log_warning "Failed to start Docker service"
     fi
 

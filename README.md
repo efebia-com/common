@@ -42,15 +42,25 @@ common/
 - **Idempotent** - Safe to re-run without breaking existing setups
 - **Resource-optimized** - Each server type gets only what it needs
 
+## Prerequisites
+
+Before running the provisioning scripts, ensure:
+
+- **Operating System:** Ubuntu 24.04 (recommended)
+- **User Requirements:** Script must be run as a user with passwordless sudo access (default `ubuntu` user on OVH)
+- **Internet Connectivity:** Required to download components and packages
+- **Disk Space:** At least 5GB free space recommended
+
 ## Usage in OVH
 
-In the OVH "Post-Installation Script" field, use the unified script with a `?profile=NAME` parameter:
+In the OVH "Post-Installation Script" field, use the download-then-execute pattern:
 
 ### Backend Server
 
 ```bash
 #!/bin/bash
-curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=backend' | bash
+curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o /tmp/post-install.sh
+bash /tmp/post-install.sh backend
 ```
 
 **Installs:**
@@ -65,7 +75,8 @@ curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-inst
 
 ```bash
 #!/bin/bash
-curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=database' | bash
+curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o /tmp/post-install.sh
+bash /tmp/post-install.sh database
 ```
 
 **Installs:**
@@ -82,7 +93,8 @@ curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-inst
 
 ```bash
 #!/bin/bash
-curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=general' | bash
+curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o /tmp/post-install.sh
+bash /tmp/post-install.sh general
 ```
 
 **Installs:**
@@ -94,9 +106,28 @@ curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-inst
 
 **Note:** Minimal setup for general-purpose use. No Cloudflared or database components.
 
-### Important
+### Manual Execution
 
-⚠️ **The `?profile=NAME` parameter is required.** The script will fail with a helpful error message if no profile is specified.
+For testing or manual server setup:
+
+```bash
+# Download the script
+curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o post-install.sh
+
+# Execute with profile as argument
+bash post-install.sh backend
+
+# Or using environment variable
+PROFILE=backend bash post-install.sh
+```
+
+### Important Notes
+
+⚠️ **Requirements:**
+- The profile parameter is mandatory (backend, database, or general)
+- Passwordless sudo access is required for the executing user
+- OVH's default `ubuntu` user already has this configured
+- The script will run pre-flight checks and fail early if requirements aren't met
 
 ## User Accounts
 
@@ -165,6 +196,74 @@ Provisioning Summary
 
 This makes debugging much easier - you know exactly what failed and where to look.
 
+## Troubleshooting
+
+### Permission Denied Errors
+
+**Problem:** Errors like `Permission denied`, `Operation not permitted`, or `Authentication failure`
+
+**Solution:**
+1. Ensure you're running as the `ubuntu` user (or another user with sudo access)
+2. Verify passwordless sudo is configured:
+   ```bash
+   sudo -n true
+   ```
+   If this asks for a password, configure `/etc/sudoers`:
+   ```bash
+   echo "ubuntu ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/ubuntu
+   ```
+
+### apt-get Update Fails (Exit Code 100)
+
+**Problem:** System component fails with `Failed to update package lists`
+
+**Causes:**
+- Running without sudo privileges
+- Another package manager process is running (apt lock)
+- Network connectivity issues
+
+**Solution:**
+1. Check if another apt process is running:
+   ```bash
+   sudo lsof /var/lib/dpkg/lock-frontend
+   ```
+2. Wait for other updates to complete or kill stale processes
+3. Ensure you have sudo access (see Permission Denied above)
+
+### SSH Service Restart Fails
+
+**Problem:** SSH component fails with `Authentication failure` when restarting sshd
+
+**Solution:**
+- This happens when running without sudo
+- The script now includes pre-flight checks to catch this early
+- Ensure the user has passwordless sudo configured
+
+### Pre-flight Checks Fail
+
+**Problem:** Script exits early with pre-flight check failures
+
+**Common Issues:**
+1. **No sudo access:** Configure passwordless sudo for your user
+2. **No internet connectivity:** Check network connection and DNS
+3. **Low disk space:** Free up space (5GB+ recommended)
+4. **Wrong OS:** Script is designed for Ubuntu 24.04
+
+### Profile Not Found
+
+**Problem:** `Profile not found: PROFILENAME`
+
+**Solution:**
+- Valid profiles are: `backend`, `database`, `general`
+- Check spelling and use lowercase
+- Example: `bash post-install.sh backend`
+
+### Component Already Installed Messages
+
+**Problem:** Seeing "already installed" for many components
+
+**This is normal!** The scripts are idempotent. If you re-run provisioning, components that are already installed will be skipped. This is not an error.
+
 ## Customization
 
 ### Creating a Custom Server Type
@@ -191,7 +290,9 @@ export APPS_DIR="/opt/apps"
 2. **Use in OVH with the new profile**:
 
 ```bash
-curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=loadbalancer' | bash
+#!/bin/bash
+curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o /tmp/post-install.sh
+bash /tmp/post-install.sh loadbalancer
 ```
 
 That's it! No need to create a separate entry point script - the unified `post-install.sh` handles all profiles.

@@ -1,6 +1,5 @@
 #!/bin/bash
 # post-install.sh - Unified OVH server provisioning entry point
-# Usage: curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=NAME' | bash
 # Available profiles: backend, database, general
 
 set -euo pipefail
@@ -17,22 +16,15 @@ else
     USE_LOCAL=false
 fi
 
-# Extract profile parameter from query string
-# When curl downloads a URL with ?param=value, bash receives it as $0 or via parsing
-# We need to extract it from the command line or stdin
+# Extract profile parameter
 PROFILE_NAME=""
 
-# Method 1: Try to extract from $0 (script name) if it contains the query string
-if [[ "$0" =~ profile=([a-zA-Z0-9_-]+) ]]; then
-    PROFILE_NAME="${BASH_REMATCH[1]}"
-fi
-
-# Method 2: Check if passed as first argument
-if [[ -z "$PROFILE_NAME" ]] && [[ $# -gt 0 ]]; then
+# Method 1: Check if passed as first argument
+if [[ $# -gt 0 ]]; then
     PROFILE_NAME="$1"
 fi
 
-# Method 3: Check environment variable (for manual runs)
+# Method 2: Check environment variable (for manual runs)
 if [[ -z "$PROFILE_NAME" ]] && [[ -n "${PROFILE:-}" ]]; then
     PROFILE_NAME="$PROFILE"
 fi
@@ -42,8 +34,9 @@ if [[ -z "$PROFILE_NAME" ]]; then
     cat >&2 <<'EOF'
 ERROR: Profile parameter is required.
 
-Usage:
-  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=NAME' | bash
+Usage (recommended - download then execute):
+  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o post-install.sh
+  bash post-install.sh PROFILE
 
 Available profiles:
   - backend   : Application servers (Docker + Cloudflared)
@@ -51,13 +44,18 @@ Available profiles:
   - general   : General purpose servers (minimal setup)
 
 Examples:
-  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=backend' | bash
-  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=database' | bash
-  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh?profile=general' | bash
-
-For manual runs:
-  PROFILE=backend bash post-install.sh
+  # Download and execute with backend profile
+  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o post-install.sh
   bash post-install.sh backend
+
+  # Or use environment variable
+  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o post-install.sh
+  PROFILE=backend bash post-install.sh
+
+For OVH post-installation script, use:
+  #!/bin/bash
+  curl -fsSL 'https://raw.githubusercontent.com/efebia-com/common/master/post-install.sh' -o /tmp/post-install.sh
+  bash /tmp/post-install.sh backend
 
 EOF
     exit 1
@@ -82,6 +80,12 @@ export SCRIPT_NAME="${PROFILE_NAME}-provisioning"
 log_info "Starting server provisioning"
 log_info "Repository: ${REPO_BASE_URL}"
 log_info "Profile: ${PROFILE_NAME}"
+
+# Run pre-flight checks
+if ! preflight_checks; then
+    log_error "Pre-flight checks failed. Aborting provisioning."
+    exit 1
+fi
 
 # Load profile (local or download)
 if [[ "$USE_LOCAL" == "true" ]]; then

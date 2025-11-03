@@ -5,13 +5,13 @@ setup_system() {
     component_start "system"
 
     # Update package lists
-    if ! run_safe "Update apt package lists" apt-get update; then
+    if ! run_safe "Update apt package lists" sudo apt-get update; then
         component_fail "system" "Failed to update package lists"
         return 1
     fi
 
     # Upgrade existing packages
-    if ! run_safe "Upgrade existing packages" apt-get upgrade -y; then
+    if ! run_safe "Upgrade existing packages" sudo apt-get upgrade -y; then
         component_fail "system" "Failed to upgrade packages"
         return 1
     fi
@@ -31,7 +31,7 @@ setup_system() {
 
     log_info "Installing essential packages: ${packages[*]}"
 
-    if ! run_safe "Install essential packages" apt-get install -y "${packages[@]}"; then
+    if ! run_safe "Install essential packages" sudo apt-get install -y "${packages[@]}"; then
         component_fail "system" "Failed to install essential packages"
         return 1
     fi

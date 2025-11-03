@@ -128,6 +128,73 @@ report_status() {
 }
 
 # ============================================================================
+# Pre-flight Checks
+# ============================================================================
+
+# Check system prerequisites before starting
+preflight_checks() {
+    log_info "Running pre-flight checks..."
+    local checks_passed=true
+
+    # Check 1: Operating System
+    if [[ -f /etc/os-release ]]; then
+        source /etc/os-release
+        if [[ "$ID" != "ubuntu" ]]; then
+            log_error "Pre-flight: This script is designed for Ubuntu (found: $ID)"
+            checks_passed=false
+        else
+            log_info "Pre-flight: OS check passed (Ubuntu $VERSION_ID)"
+        fi
+    else
+        log_warning "Pre-flight: Cannot determine OS version"
+    fi
+
+    # Check 2: Sudo access (passwordless)
+    if sudo -n true 2>/dev/null; then
+        log_info "Pre-flight: Sudo access confirmed (passwordless)"
+    else
+        log_error "Pre-flight: Sudo access required. Ensure user has passwordless sudo configured."
+        log_error "Pre-flight: Add to /etc/sudoers: $(whoami) ALL=(ALL) NOPASSWD:ALL"
+        checks_passed=false
+    fi
+
+    # Check 3: Internet connectivity
+    if curl -fsSL --connect-timeout 5 https://raw.githubusercontent.com > /dev/null 2>&1; then
+        log_info "Pre-flight: Internet connectivity confirmed"
+    else
+        log_error "Pre-flight: No internet connectivity. Cannot download components."
+        checks_passed=false
+    fi
+
+    # Check 4: Disk space (require at least 5GB free)
+    local available_gb=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
+    if [[ $available_gb -ge 5 ]]; then
+        log_info "Pre-flight: Sufficient disk space (${available_gb}GB available)"
+    else
+        log_warning "Pre-flight: Low disk space (${available_gb}GB available, 5GB+ recommended)"
+    fi
+
+    # Check 5: Required commands
+    local required_cmds=("curl" "wget" "bash" "apt-get")
+    for cmd in "${required_cmds[@]}"; do
+        if command_exists "$cmd"; then
+            log_debug "Pre-flight: Command found: $cmd"
+        else
+            log_error "Pre-flight: Required command not found: $cmd"
+            checks_passed=false
+        fi
+    done
+
+    if [[ "$checks_passed" == "false" ]]; then
+        log_error "Pre-flight checks failed. Please resolve the issues above and try again."
+        return 1
+    fi
+
+    log_success "Pre-flight checks passed!"
+    return 0
+}
+
+# ============================================================================
 # Idempotency Checks
 # ============================================================================
 
@@ -205,16 +272,28 @@ update_config() {
         return 1
     fi
 
-    # Create backup
-    cp "$file" "$backup"
+    # Create backup (with sudo if needed for system files)
+    if [[ -w "$file" ]]; then
+        cp "$file" "$backup"
+    else
+        sudo cp "$file" "$backup"
+    fi
 
     # If pattern exists, replace it
     if grep -qF "$pattern" "$file"; then
-        sed -i "s|^.*${pattern}.*|${replacement}|" "$file"
+        if [[ -w "$file" ]]; then
+            sed -i "s|^.*${pattern}.*|${replacement}|" "$file"
+        else
+            sudo sed -i "s|^.*${pattern}.*|${replacement}|" "$file"
+        fi
         log_debug "Updated existing: $pattern -> $replacement in $file"
     else
         # If pattern doesn't exist, append
-        echo "$replacement" >> "$file"
+        if [[ -w "$file" ]]; then
+            echo "$replacement" >> "$file"
+        else
+            echo "$replacement" | sudo tee -a "$file" > /dev/null
+        fi
         log_debug "Appended: $replacement to $file"
     fi
 
@@ -227,13 +306,24 @@ add_line_if_missing() {
     local line="$2"
 
     if [[ ! -f "$file" ]]; then
-        echo "$line" > "$file"
+        # Create file (with sudo if in a protected directory)
+        local dir=$(dirname "$file")
+        if [[ -w "$dir" ]]; then
+            echo "$line" > "$file"
+        else
+            echo "$line" | sudo tee "$file" > /dev/null
+        fi
         log_debug "Created file with: $file"
         return 0
     fi
 
     if ! grep -qF "$line" "$file"; then
-        echo "$line" >> "$file"
+        # Add line (with sudo if needed)
+        if [[ -w "$file" ]]; then
+            echo "$line" >> "$file"
+        else
+            echo "$line" | sudo tee -a "$file" > /dev/null
+        fi
         log_debug "Added line to: $file"
     else
         log_debug "Line already present in: $file"

@@ -16,7 +16,7 @@ setup_terminal() {
 
     # Compile and install terminfo
     log_info "Installing Ghostty terminfo"
-    if ! run_safe "Compile terminfo" tic -x "$terminfo_file"; then
+    if ! run_safe "Compile terminfo" sudo tic -x "$terminfo_file"; then
         component_fail "terminal" "Failed to compile terminfo"
         return 1
     fi

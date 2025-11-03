@@ -59,14 +59,14 @@ install_postgresql() {
     log_info "Installing PostgreSQL"
 
     # Install PostgreSQL
-    if ! run_safe "Install PostgreSQL" apt-get install -y postgresql postgresql-contrib postgresql-client; then
+    if ! run_safe "Install PostgreSQL" sudo apt-get install -y postgresql postgresql-contrib postgresql-client; then
         log_error "Failed to install PostgreSQL"
         return 1
     fi
 
     # Enable and start service
-    run_safe "Enable PostgreSQL" systemctl enable postgresql
-    run_safe "Start PostgreSQL" systemctl start postgresql
+    run_safe "Enable PostgreSQL" sudo systemctl enable postgresql
+    run_safe "Start PostgreSQL" sudo systemctl start postgresql
 
     local pg_version=$(psql --version 2>/dev/null || echo "unknown")
     log_info "PostgreSQL installed: $pg_version"
@@ -78,14 +78,14 @@ install_mysql() {
     log_info "Installing MySQL"
 
     # Install MySQL server
-    if ! run_safe "Install MySQL" apt-get install -y mysql-server mysql-client; then
+    if ! run_safe "Install MySQL" sudo apt-get install -y mysql-server mysql-client; then
         log_error "Failed to install MySQL"
         return 1
     fi
 
     # Enable and start service
-    run_safe "Enable MySQL" systemctl enable mysql
-    run_safe "Start MySQL" systemctl start mysql
+    run_safe "Enable MySQL" sudo systemctl enable mysql
+    run_safe "Start MySQL" sudo systemctl start mysql
 
     local mysql_version=$(mysql --version 2>/dev/null || echo "unknown")
     log_info "MySQL installed: $mysql_version"
