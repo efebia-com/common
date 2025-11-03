@@ -4,6 +4,19 @@
 
 set -euo pipefail
 
+# Cleanup function
+cleanup_temp_files() {
+    rm -f /tmp/base.sh /tmp/*.profile 2>/dev/null
+    rm -f /tmp/system.sh /tmp/terminal.sh /tmp/docker.sh /tmp/users.sh 2>/dev/null
+    rm -f /tmp/cloudflared.sh /tmp/ssh.sh /tmp/database.sh /tmp/nodejs.sh 2>/dev/null
+}
+
+# Always cleanup on exit (success or failure)
+trap cleanup_temp_files EXIT
+
+# Clean up any stale files from previous runs
+cleanup_temp_files
+
 # Configuration
 # Detect if running from local directory (for testing) or need to download from GitHub
 if [[ -f "./lib/base.sh" ]]; then
@@ -157,10 +170,5 @@ done
 report_status
 exit_code=$?
 
-# Cleanup
-rm -f /tmp/base.sh /tmp/${PROFILE_NAME}.profile
-for component in "${COMPONENTS[@]}"; do
-    rm -f "/tmp/${component}.sh"
-done
-
+# Cleanup happens automatically via trap
 exit $exit_code
