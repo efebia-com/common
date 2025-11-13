@@ -6,7 +6,12 @@ USER_DEVOPS="${USER_DEVOPS:-devops}"
 USER_RUNNER="${USER_RUNNER:-runner}"
 USER_GHACTIONS="${USER_GHACTIONS:-gh-actions}"
 APPS_DIR="${APPS_DIR:-/opt/apps}"
-DEVOPS_SSH_KEY="${DEVOPS_SSH_KEY:-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKwF12bPWwBPKF29ERFtj7H4a3yeYNj5PrVsvqFEG4J8 devops@efebia.com}"
+
+# SSH keys for devops user (can be array or single key for backward compatibility)
+if [[ -z "${DEVOPS_SSH_KEYS:-}" ]]; then
+    # Backward compatibility: single key
+    DEVOPS_SSH_KEYS=("${DEVOPS_SSH_KEY:-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKwF12bPWwBPKF29ERFtj7H4a3yeYNj5PrVsvqFEG4J8 devops@efebia.com}")
+fi
 
 setup_users() {
     component_start "users"
@@ -34,18 +39,26 @@ setup_users() {
             component_fail "users" "Failed to create '$USER_DEVOPS' user"
             return 1
         fi
-
-        # Setup SSH key for devops
-        local ssh_dir="/home/$USER_DEVOPS/.ssh"
-        sudo mkdir -p "$ssh_dir"
-        echo "$DEVOPS_SSH_KEY" | sudo tee "$ssh_dir/authorized_keys" > /dev/null
-        sudo chmod 700 "$ssh_dir"
-        sudo chmod 600 "$ssh_dir/authorized_keys"
-        sudo chown -R "$USER_DEVOPS:$USER_DEVOPS" "$ssh_dir"
-        log_info "SSH key configured for '$USER_DEVOPS'"
     else
-        log_info "User '$USER_DEVOPS' already exists, skipping"
+        log_info "User '$USER_DEVOPS' already exists"
     fi
+
+    # ALWAYS update SSH keys for devops (even if user already exists)
+    # This allows adding/removing team members by re-running the script
+    log_info "Updating SSH keys for '$USER_DEVOPS'"
+    local ssh_dir="/home/$USER_DEVOPS/.ssh"
+    sudo mkdir -p "$ssh_dir"
+
+    # Brutally replace all keys (delete old, write new)
+    sudo rm -f "$ssh_dir/authorized_keys"
+    for key in "${DEVOPS_SSH_KEYS[@]}"; do
+        echo "$key" | sudo tee -a "$ssh_dir/authorized_keys" > /dev/null
+    done
+
+    sudo chmod 700 "$ssh_dir"
+    sudo chmod 600 "$ssh_dir/authorized_keys"
+    sudo chown -R "$USER_DEVOPS:$USER_DEVOPS" "$ssh_dir"
+    log_info "SSH keys updated for '$USER_DEVOPS' (${#DEVOPS_SSH_KEYS[@]} key(s))"
 
     # Create runner user (application runtime)
     if ! user_exists "$USER_RUNNER"; then
